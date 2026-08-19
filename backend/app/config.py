@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     chunk_overlap: int = 150
     retrieval_top_k: int = 4
 
+    # External search.
+    search_max_results: int = 5
+
     # CORS: the provided vite frontend runs on 5173.
     allowed_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 

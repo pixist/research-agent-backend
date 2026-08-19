@@ -1,4 +1,4 @@
-"""The research agent: retrieve uploaded context, then stream a grounded answer."""
+"""The research agent: gather sources, then stream a grounded markdown answer."""
 from __future__ import annotations
 
 import asyncio
@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 from .config import Settings
 from .embeddings import EmbeddingClient
 from .llm import ChatClient
+from .search import SearchResult, WebSearch
 from .store import Retrieved, VectorStore
 
 logger = logging.getLogger(__name__)
@@ -27,40 +28,53 @@ class ResearchAgent:
         store: VectorStore,
         embeddings: EmbeddingClient,
         chat: ChatClient,
+        search: WebSearch,
     ) -> None:
         self._settings = settings
         self._store = store
         self._embeddings = embeddings
         self._chat = chat
+        self._search = search
 
     async def run(self, request: str) -> AsyncIterator[str]:
         """Stream the answer to ``request`` as markdown."""
         try:
-            local = await self._retrieve(request)
+            local, web = await self._gather(request)
         except Exception:
-            logger.exception("retrieval failed")
+            logger.exception("gathering sources failed")
             yield "\n\n> Could not gather sources for this request.\n"
             return
 
-        messages = _build_messages(request, local)
+        messages = _build_messages(request, local, web)
         async for token in self._chat.stream(messages):
             yield token
-        yield _sources_section(local)
+        yield _sources_section(local, web)
 
-    async def _retrieve(self, request: str) -> list[Retrieved]:
+    async def _gather(
+        self, request: str
+    ) -> tuple[list[Retrieved], list[SearchResult]]:
+        """Retrieve uploaded context and external results concurrently."""
         query_vec = await self._embeddings.embed_one(request)
-        return await asyncio.to_thread(
+        local_task = asyncio.to_thread(
             self._store.search, query_vec, self._settings.retrieval_top_k
         )
+        web_task = self._search.search(request)
+        local, web = await asyncio.gather(local_task, web_task)
+        return local, web
 
 
-def _build_messages(request: str, local: list[Retrieved]) -> list[dict[str, str]]:
-    if local:
-        context = json.dumps(
-            [{"source": r.chunk.source, "text": r.chunk.text} for r in local], indent=2
-        )
-    else:
-        context = "(no sources retrieved)"
+def _build_messages(
+    request: str, local: list[Retrieved], web: list[SearchResult]
+) -> list[dict[str, str]]:
+    blocks: list[str] = []
+    n = 1
+    for item in local:
+        blocks.append(f"[{n}] (uploaded: {item.chunk.source}) {item.chunk.text}")
+        n += 1
+    for hit in web:
+        blocks.append(f"[{n}] (web: {hit.url}) {hit.title} — {hit.snippet}")
+        n += 1
+    context = "\n\n".join(blocks) if blocks else "(no sources retrieved)"
     user = f"Context:\n{context}\n\nQuestion: {request}"
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -68,10 +82,15 @@ def _build_messages(request: str, local: list[Retrieved]) -> list[dict[str, str]
     ]
 
 
-def _sources_section(local: list[Retrieved]) -> str:
-    if not local:
-        return ""
+def _sources_section(local: list[Retrieved], web: list[SearchResult]) -> str:
     lines = ["\n\n---\n\n### Sources\n"]
-    for n, item in enumerate(local, start=1):
+    n = 1
+    for item in local:
         lines.append(f"{n}. uploaded — {item.chunk.source}")
+        n += 1
+    for hit in web:
+        lines.append(f"{n}. [{hit.title}]({hit.url})")
+        n += 1
+    if n == 1:
+        return ""
     return "\n".join(lines) + "\n"

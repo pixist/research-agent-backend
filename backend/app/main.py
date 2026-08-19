@@ -14,6 +14,7 @@ from .config import get_settings
 from .embeddings import EmbeddingClient
 from .llm import ChatClient
 from .schemas import UploadedFile, UploadResponse
+from .search import WebSearch
 from .store import Chunk, VectorStore
 
 logging.basicConfig(level=logging.INFO)
@@ -26,11 +27,12 @@ async def lifespan(app: FastAPI):
     store = VectorStore()
     embeddings = EmbeddingClient(settings)
     chat = ChatClient(settings)
+    search = WebSearch(settings)
 
     app.state.settings = settings
     app.state.store = store
     app.state.embeddings = embeddings
-    app.state.agent = ResearchAgent(settings, store, embeddings, chat)
+    app.state.agent = ResearchAgent(settings, store, embeddings, chat, search)
     yield
 
 
