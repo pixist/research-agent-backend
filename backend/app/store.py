@@ -40,6 +40,8 @@ class VectorStore:
 
     def search(self, query: list[float], k: int) -> list[Retrieved]:
         with self._lock:
+            if not self._vectors:  # nothing indexed yet
+                return []
             matrix = np.vstack(self._vectors)
             chunks = list(self._chunks)
         q = _normalize(np.asarray(query, dtype=np.float32))
