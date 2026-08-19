@@ -9,13 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
 from .agent import ResearchAgent
-from .chunking import chunk_text
 from .config import get_settings
 from .embeddings import EmbeddingClient
+from .ingest import IngestQueue
 from .llm import ChatClient
 from .schemas import UploadedFile, UploadResponse
 from .search import WebSearch
-from .store import Chunk, VectorStore
+from .store import VectorStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,11 +28,12 @@ async def lifespan(app: FastAPI):
     embeddings = EmbeddingClient(settings)
     chat = ChatClient(settings)
     search = WebSearch(settings)
+    ingest = IngestQueue(settings, embeddings, store)
+    ingest.start()
 
     app.state.settings = settings
-    app.state.store = store
-    app.state.embeddings = embeddings
     app.state.agent = ResearchAgent(settings, store, embeddings, chat, search)
+    app.state.ingest = ingest
     yield
 
 
@@ -67,22 +68,13 @@ async def research(request: Request):
 async def sources(
     request: Request, files: list[UploadFile] = File(...)
 ) -> UploadResponse:
-    settings = request.app.state.settings
-    store = request.app.state.store
-    embeddings = request.app.state.embeddings
+    ingest: IngestQueue = request.app.state.ingest
 
     uploaded: list[UploadedFile] = []
     for file in files:
         data = await file.read()
         name = file.filename or "upload.txt"
-        pieces = chunk_text(
-            data.decode("utf-8", errors="replace"),
-            settings.chunk_size,
-            settings.chunk_overlap,
-        )
-        if pieces:
-            vectors = await embeddings.embed(pieces)
-            store.add([Chunk(text=p, source=name) for p in pieces], vectors)
+        await ingest.enqueue(name, data)
         uploaded.append(
             UploadedFile(
                 name=name, size=len(data), type=file.content_type or "text/plain"
