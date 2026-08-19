@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     chat_model: str = "gpt-4o-mini"
     embed_model: str = "text-embedding-3-small"
 
+    # Retrieval.
+    chunk_size: int = 900
+    chunk_overlap: int = 150
+    retrieval_top_k: int = 4
+
     @property
     def use_fake_provider(self) -> bool:
         """Fall back to a deterministic offline provider when no key is set."""
