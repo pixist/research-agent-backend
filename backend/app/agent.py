@@ -46,8 +46,14 @@ class ResearchAgent:
             return
 
         messages = _build_messages(request, local, web)
-        async for token in self._chat.stream(messages):
-            yield token
+        try:
+            async for token in self._chat.stream(messages):
+                yield token
+        except Exception:
+            logger.exception("generation failed")
+            yield "\n\n> The model stopped generating before finishing.\n"
+            return
+
         yield _sources_section(local, web)
 
     async def _gather(

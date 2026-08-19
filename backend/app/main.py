@@ -34,7 +34,12 @@ async def lifespan(app: FastAPI):
     app.state.settings = settings
     app.state.agent = ResearchAgent(settings, store, embeddings, chat, search)
     app.state.ingest = ingest
-    yield
+    if settings.use_fake_provider:
+        logger.warning("no OPENAI_API_KEY set — using the offline demo provider")
+    try:
+        yield
+    finally:
+        await ingest.stop()
 
 
 app = FastAPI(title="Research Agent Backend", lifespan=lifespan)
@@ -68,12 +73,15 @@ async def research(request: Request):
 async def sources(
     request: Request, files: list[UploadFile] = File(...)
 ) -> UploadResponse:
+    settings = request.app.state.settings
     ingest: IngestQueue = request.app.state.ingest
 
     uploaded: list[UploadedFile] = []
     for file in files:
         data = await file.read()
         name = file.filename or "upload.txt"
+        if len(data) > settings.max_upload_bytes:
+            return PlainTextResponse(f"{name} is too large.", status_code=413)
         await ingest.enqueue(name, data)
         uploaded.append(
             UploadedFile(

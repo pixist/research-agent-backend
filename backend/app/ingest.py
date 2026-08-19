@@ -1,7 +1,7 @@
 """Background ingestion: uploaded files are embedded off the request path.
 
-Uploads return immediately; a worker pulls each file off a queue, chunks it,
-embeds the chunks (the slow part) and writes them to the store.
+Uploads return immediately; a pool of workers pulls each file off a queue,
+chunks it, embeds the chunks (the slow part) and writes them to the store.
 """
 from __future__ import annotations
 
@@ -31,11 +31,12 @@ class IngestQueue:
         self._embeddings = embeddings
         self._store = store
         self._queue: asyncio.Queue[IngestJob] = asyncio.Queue()
-        self._worker: asyncio.Task[None] | None = None
+        self._workers: list[asyncio.Task[None]] = []
 
     def start(self) -> None:
         # one worker keeps ingest order simple for the demo
-        self._worker = asyncio.create_task(self._run())
+        for _ in range(self._settings.ingest_workers):
+            self._workers.append(asyncio.create_task(self._run()))
 
     async def enqueue(self, name: str, data: bytes) -> None:
         await self._queue.put(IngestJob(name=name, data=data))
@@ -61,3 +62,9 @@ class IngestQueue:
         vectors = await self._embeddings.embed(pieces)
         self._store.add([Chunk(text=p, source=job.name) for p in pieces], vectors)
         logger.info("ingested %s (%d chunks)", job.name, len(pieces))
+
+    async def stop(self) -> None:
+        for worker in self._workers:
+            worker.cancel()
+        await asyncio.gather(*self._workers, return_exceptions=True)
+        self._workers.clear()

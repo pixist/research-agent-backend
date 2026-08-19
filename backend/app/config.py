@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # External search.
     search_max_results: int = 5
 
+    # Uploads are embedded on a background worker pool.
+    ingest_workers: int = 2
+    max_upload_bytes: int = 5 * 1024 * 1024
+
     # CORS: the provided vite frontend runs on 5173.
     allowed_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
