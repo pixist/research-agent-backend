@@ -13,6 +13,16 @@ dependencies = [
     "ddgs>=6.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
