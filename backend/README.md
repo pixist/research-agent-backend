@@ -2,9 +2,20 @@
 
 A small FastAPI service behind the provided research-agent frontend. It takes a question, pulls context from your uploaded files and a web search, and streams a markdown answer back to the browser.
 
+## Layout
+
+The provided frontend and this backend sit side by side:
+
+```
+frontend/   the provided React app (Vite)
+backend/    this service
+```
+
 ## Setup
 
-Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Backend needs Python 3.12+ and [uv](https://docs.astral.sh/uv/); the frontend needs Node.
+
+### Backend
 
 ```sh
 cd backend
@@ -13,7 +24,19 @@ cp .env.example .env   # optional — add an OPENAI_API_KEY for real answers
 uv run uvicorn app.main:app --port 8787 --reload
 ```
 
-Without an `OPENAI_API_KEY` it uses a deterministic offline provider, so you can click through the UI with no key. The frontend already points at `http://localhost:8787` — just run `npm run dev` next to it.
+Without an `OPENAI_API_KEY` it uses a deterministic offline provider, so you can click through the UI with no key.
+
+### Frontend
+
+In another terminal, next to the backend:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+It defaults to the backend on `http://localhost:8787`; set `VITE_API_BASE_URL` to point elsewhere.
 
 ## API
 
