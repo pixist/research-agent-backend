@@ -38,6 +38,23 @@ npm run dev
 
 It defaults to the backend on `http://localhost:8787`; set `VITE_API_BASE_URL` to point elsewhere.
 
+### Using OpenRouter
+
+The chat client is OpenAI-compatible, so you can point it at OpenRouter and pick any model it serves:
+
+```sh
+OPENAI_API_KEY=sk-or-...
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+CHAT_MODEL=openai/gpt-4o-mini   # or any model id on OpenRouter
+```
+
+Important detail: OpenRouter has no embeddings endpoint, so uploads/retrieval need a provider that can embed. Give the embedding client its own key — otherwise it falls back to the offline hash and retrieval won't be meaningful:
+
+```sh
+EMBED_API_KEY=sk-...                     # e.g. an OpenAI key
+EMBED_BASE_URL=https://api.openai.com/v1
+```
+
 ## API
 
 - `POST /api/research` — body `{ "request": "..." }`. Streams markdown as `text/markdown`. The frontend concatenates the chunks, so it's plain text, not SSE.
