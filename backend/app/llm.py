@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from .config import Settings
+from .config import Settings, openrouter_headers
 
 
 class ChatClient:
@@ -14,7 +14,9 @@ class ChatClient:
             from openai import AsyncOpenAI
 
             self._client = AsyncOpenAI(
-                api_key=settings.openai_api_key, base_url=settings.openai_base_url
+                api_key=settings.openai_api_key,
+                base_url=settings.openai_base_url,
+                default_headers=openrouter_headers(settings.openai_base_url),
             )
 
     async def stream(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:

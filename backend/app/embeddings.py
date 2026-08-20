@@ -6,7 +6,7 @@ import hashlib
 
 import numpy as np
 
-from .config import Settings
+from .config import Settings, openrouter_headers
 
 _FAKE_DIM = 256
 
@@ -15,11 +15,13 @@ class EmbeddingClient:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client = None
-        if not settings.use_fake_provider:
+        if not settings.use_fake_embeddings:
             from openai import AsyncOpenAI
 
             self._client = AsyncOpenAI(
-                api_key=settings.openai_api_key, base_url=settings.openai_base_url
+                api_key=settings.effective_embed_api_key,
+                base_url=settings.effective_embed_base_url,
+                default_headers=openrouter_headers(settings.effective_embed_base_url),
             )
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
