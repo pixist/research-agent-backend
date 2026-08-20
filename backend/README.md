@@ -86,7 +86,9 @@ Design decisions:
 - Stream tool progress to the UI as status lines.
 - Per-session sources instead of one global store.
 
-## Example
+## Examples
+
+### With an uploaded source
 
 Upload a `.txt` and ask about it:
 
@@ -95,6 +97,38 @@ Upload a `.txt` and ask about it:
 ```
 
 The answer streams in as markdown and ends with a **Sources** list mixing your uploads and web results.
+
+### With web search
+
+A real run (chat on OpenRouter, no upload), trimmed:
+
+```
+> Best hostels in lake bled
+
+Here are some of the best hostels in Lake Bled, Slovenia:
+
+### 1. Hostel Bled
+- Dorms from EUR 16.00. Vibrant atmosphere, friendly staff, near the lake,
+  with kitchen and common areas. [2]
+
+### 2. Alp Penzion
+- Brokepackr score 9.5/10. Praised for cleanliness and comfort. [5]
+
+### 3. Bled Hostel
+- Dormitory and private rooms, close to the attractions, affordable.
+
+...(trimmed)
+
+---
+### Sources
+1. The 5 Best Hostels in Lake Bled - The Broke Backpacker
+2. Best Hostels in Bled from EUR 16.00 | 2026 - Hostelworld
+3. The 7 Best Hostels In Bled (Updated 2026)
+4. The 6 BEST Backpacker Hostels in Lake Bled (2025)
+5. 5 Best Hostels in Lake Bled (2026) - Brokepackr
+```
+
+The **Sources** block is the web results the agent actually used, cited inline as `[n]`.
 
 ## Evaluating the agent
 
