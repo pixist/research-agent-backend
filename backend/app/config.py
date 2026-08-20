@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     chat_model: str = "gpt-4o-mini"
 
-    # Embedding provider. Falls back to the chat provider when unset.
+    # Embedding provider. Falls back to the chat provider when unset. OpenRouter
+    # has no embeddings endpoint, so if chat is on OpenRouter set these to an
+    # OpenAI-compatible embeddings endpoint (or leave them for the offline hash).
     embed_api_key: str | None = None
     embed_base_url: str | None = None
     embed_model: str = "text-embedding-3-small"
@@ -40,16 +42,23 @@ class Settings(BaseSettings):
         return not self.openai_api_key
 
     @property
-    def effective_embed_api_key(self) -> str | None:
-        return self.embed_api_key or self.openai_api_key
-
-    @property
     def effective_embed_base_url(self) -> str:
         return self.embed_base_url or self.openai_base_url
 
     @property
+    def effective_embed_api_key(self) -> str | None:
+        if self.embed_api_key:
+            return self.embed_api_key
+        # only inherit the chat key if that endpoint can actually embed —
+        # OpenRouter can't, so there we fall through to the offline hash instead
+        if "openrouter.ai" in self.effective_embed_base_url:
+            return None
+        return self.openai_api_key
+
+    @property
     def use_fake_embeddings(self) -> bool:
-        """Embeddings fall back to the hash independently of chat."""
+        """Embeddings fall back to the hash independently of chat, so chat can be
+        on OpenRouter (no embeddings endpoint) without breaking retrieval."""
         return not self.effective_embed_api_key
 
 
